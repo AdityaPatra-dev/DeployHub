@@ -152,16 +152,20 @@ Each phase produces a working system. The platform is built in stages, smallest 
 
 | Feature | Status |
 | :--- | :---: |
-| Clone repo + Docker build + run container | 🚧 In progress |
-| Deployment state machine | 📅 Planned |
-| FastAPI backend + PostgreSQL | 📅 Planned |
-| Web dashboard | 📅 Planned |
-| Kubernetes deployment | 📅 Planned |
-| GitHub OAuth + webhooks | 📅 Planned |
-| CI/CD pipeline | 📅 Planned |
-| Prometheus / Grafana monitoring | 📅 Planned |
-| Autoscaling (HPA) | 📅 Planned |
-| Terraform + AWS | 📅 Planned |
+| Clone repo + Docker build + run container | ✅ Done (Phase 01) |
+| Runtime Auto-Detection (Python, Node.js, Dockerfile) | ✅ Done (Phase 01) |
+| Deterministic Deployment State Machine | ✅ Done (Phase 01) |
+| HTTP Health Checks & Crash Diagnostics | ✅ Done (Phase 01) |
+| Sample Test Applications (`examples/`) | ✅ Done (Phase 01) |
+| Automated Test Suite (pytest unit & e2e) | ✅ Done (Phase 01) |
+| FastAPI backend + PostgreSQL | 📅 Planned (Phase 04) |
+| Web dashboard (React + Tailwind) | 📅 Planned (Phase 04) |
+| Kubernetes deployment (Deployment, Service, Ingress) | 🚧 In progress (Phase 03) |
+| GitHub OAuth + webhooks | 📅 Planned (Phase 05) |
+| CI/CD pipeline (GitHub Actions) | 📅 Planned (Phase 06) |
+| Prometheus / Grafana monitoring | 📅 Planned (Phase 07) |
+| Autoscaling (HPA) | 📅 Planned (Phase 08) |
+| Terraform + AWS | 📅 Planned (Phase 09) |
 
 ✅ Done  ·  🚧 In progress  ·  📅 Planned
 
@@ -171,45 +175,69 @@ Each phase produces a working system. The platform is built in stages, smallest 
 
 ```text
 deployhub/
-├── frontend/          # React + TypeScript dashboard
-├── backend/           # FastAPI control API, services, workers
-│   └── app/
-│       ├── api/       # auth, projects, deployments, logs
-│       ├── models/
-│       ├── schemas/
-│       ├── services/  # github, docker, kubernetes, deployment
-│       └── workers/   # background build/deploy jobs
-├── infrastructure/
-│   ├── docker/
-│   ├── kubernetes/
-│   └── terraform/
-├── helm/              # Helm chart for DeployHub
-├── docs/              # Architecture, API, security, and more
-├── .github/workflows/ # CI/CD pipelines
-├── docker-compose.yml
+├── backend/
+│   ├── app/
+│   │   ├── config.py          # App settings and environment defaults
+│   │   └── engine/            # Phase 01 Core Deployment Engine
+│   │       ├── models.py      # State machine models & schemas
+│   │       ├── cloner.py      # Git cloning and commit-SHA extraction
+│   │       ├── detector.py    # Runtime auto-detection
+│   │       ├── templates.py   # Secure non-root Dockerfile generators
+│   │       ├── builder.py     # Docker build with streaming logs
+│   │       ├── runner.py      # Isolated container execution with resource limits
+│   │       ├── health.py      # HTTP polling health checker with crash detection
+│   │       ├── orchestrator.py# State machine lifecycle coordinator
+│   │       └── cli.py         # Interactive CLI runner
+│   ├── tests/                 # Unit and end-to-end integration tests
+│   └── requirements.txt
+├── examples/                  # Sample applications for deployment testing
+│   ├── python-app/            # Python / requirements.txt sample
+│   ├── node-app/              # Node.js / package.json sample
+│   └── dockerfile-app/        # Custom Dockerfile sample
+├── docs/                      # Technical blueprints and specifications
+├── Makefile                   # Convenient CLI targets (test, demo, clean)
+├── .env.example               # Environment variables template
+├── .gitignore
 ├── README.md
 └── LICENSE
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quickstart & Demo (Phase 01)
 
-> Setup instructions will be added as Phase 01 is completed.
+You can run DeployHub's core deployment engine and test applications immediately:
 
-Planned local workflow:
-
+### 1. Setup Environment
 ```bash
-git clone https://github.com/AdityaPatra-dev>/deployhub.git
-cd deployhub
-docker compose up
+# Clone the repository
+git clone https://github.com/AdityaPatra-dev/DeployHub.git
+cd DeployHub
+
+# Set up virtual environment and install dependencies
+make venv
 ```
 
-| Service | URL |
-| :--- | :--- |
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:8000 |
-| Grafana | http://localhost:3001 |
+### 2. Run Tests
+```bash
+# Run full unit and end-to-end integration test suite
+make test
+```
+
+### 3. Deploy Sample Applications via CLI
+```bash
+# Deploy Python sample app
+make demo-python
+
+# Deploy Node.js sample app
+make demo-node
+
+# Deploy Custom Dockerfile sample app
+make demo-docker
+
+# Clean up running test containers
+make clean
+```
 
 ---
 
