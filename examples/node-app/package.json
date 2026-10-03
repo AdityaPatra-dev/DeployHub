@@ -1,0 +1,10 @@
+{
+  "name": "node-sample-app",
+  "version": "1.0.0",
+  "description": "DeployHub Node.js sample application",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,2 @@
+# Minimal dependencies for sample python service
+requests>=2.31.0
