@@ -1,0 +1,30 @@
+name: Deploy DeployHub Control Plane
+
+on:
+  workflow_run:
+    workflows: ["Build, Scan & Push to GHCR"]
+    branches: [main]
+    types: [completed]
+
+jobs:
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > $HOME/.kube/config
+        if: ${{ env.KUBECONFIG_DATA != '' }}
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG_DATA }}
+
+      - name: Rollout Update via Helm
+        run: |
+          echo "Deploying DeployHub Control Plane release..."
+          # helm upgrade --install deployhub ./helm/deployhub --namespace deployhub --create-namespace

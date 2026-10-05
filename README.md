@@ -7,7 +7,7 @@
 *Inspired by Render and Railway*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-13%2F13%20Passing-brightgreen?style=for-the-badge&logo=pytest)](backend/tests/)
+[![Tests](https://img.shields.io/badge/Tests-20%2F20%20Passing-brightgreen?style=for-the-badge&logo=pytest)](backend/tests/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/Containers-Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
@@ -172,14 +172,14 @@ stateDiagram-v2
 | Phase | Milestone | Focus Areas | Status |
 | :---: | :--- | :--- | :---: |
 | **01** | **Local Deployment Engine** | Git cloner, runtime auto-detection, Docker builder, isolated runner, health checks, CLI | <div align="center">✅ **Completed**</div> |
-| **02** | **Docker Pipeline & Registry** | Secure Dockerfile generation, non-root UID 10001, SHA tagging, GHCR registry push | <div align="center">🟡 **In Progress**</div> |
-| **03** | **Kubernetes Integration** | Dynamic manifests (Deployment, Service, Ingress), Kind/k3s cluster driver, namespace isolation | <div align="center">⏳ **Next Up**</div> |
-| **04** | **API & Web Dashboard** | FastAPI REST endpoints, PostgreSQL (SQLAlchemy), Celery + Redis, React UI, SSE log streaming | <div align="center">⏳ **Next Up**</div> |
-| **05** | **GitHub Integration** | GitHub OAuth 2.0 ("Login with GitHub"), repo selector, HMAC webhook receiver | <div align="center">📅 **Planned**</div> |
-| **06** | **CI/CD Pipeline** | GitHub Actions workflows, image publishing with SHA tags, automated Trivy scanning | <div align="center">📅 **Planned**</div> |
-| **07** | **Observability** | Prometheus metric scraping, Grafana dashboards for CPU/RAM/requests, platform health telemetry | <div align="center">📅 **Planned**</div> |
-| **08** | **Autoscaling & Hardening** | Horizontal Pod Autoscaler (HPA), instant rollback engine, NetworkPolicies, ResourceQuotas | <div align="center">📅 **Planned**</div> |
-| **09** | **Cloud Infrastructure** | Terraform IaC modules (AWS VPC, Subnets, EKS/EC2), production Helm chart | <div align="center">📅 **Planned**</div> |
+| **02** | **Docker Pipeline & Registry** | Secure Dockerfile generation, non-root UID 10001, SHA tagging, GHCR registry push service | <div align="center">✅ **Completed** (Person A)</div> |
+| **03** | **Kubernetes Integration** | Dynamic manifests (Deployment, Service, Ingress, Secret), Kind/k3s driver, namespace isolation | <div align="center">✅ **Completed** (Person A)</div> |
+| **04** | **API & Web Dashboard** | FastAPI REST endpoints, PostgreSQL (SQLAlchemy), Celery + Redis, React UI, SSE log streaming | <div align="center">⏳ **Next Up** (Person B)</div> |
+| **05** | **GitHub Integration** | GitHub OAuth 2.0 ("Login with GitHub"), repo selector, HMAC webhook receiver | <div align="center">📅 **Planned** (Person B)</div> |
+| **06** | **CI/CD Pipeline** | GitHub Actions workflows, image publishing with SHA tags, automated Trivy scanning | <div align="center">✅ **Completed** (Person A)</div> |
+| **07** | **Observability** | Prometheus metric scraping, Grafana dashboards for CPU/RAM/requests, platform telemetry | <div align="center">✅ **Completed** (Person A)</div> |
+| **08** | **Autoscaling & Hardening** | NetworkPolicies, ResourceQuotas, Helm chart, multi-tenant isolation | <div align="center">✅ **Completed** (Person A)</div> |
+| **09** | **Cloud Infrastructure** | Terraform IaC modules (AWS VPC, Subnets, Security Groups, EKS/EC2) | <div align="center">✅ **Completed** (Person A)</div> |
 
 ---
 

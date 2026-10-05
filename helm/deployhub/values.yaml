@@ -1,0 +1,44 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/adityapatra-dev/deployhub
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  hosts:
+    - host: api.deployhub.live
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+env:
+  HOST_BIND_IP: "0.0.0.0"
+  DEFAULT_BUILD_TIMEOUT: "600"
+  DEFAULT_HEALTH_TIMEOUT: "120"
+  BASE_DOMAIN: "localtest.me"
+
+postgresql:
+  enabled: true
+  auth:
+    database: deployhub
+    username: deployhub
+
+redis:
+  enabled: true

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: deployhub
+description: A Helm chart for DeployHub - Cloud Control Plane PaaS
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: DeployHub Core Team
