@@ -2,201 +2,302 @@
 
 <div align="center">
 
-### Automated Self-Service Application Deployment Platform
-*Inspired by Render and Railway — From Source Code to Production URL on Kubernetes*
+### Modern Self-Service Developer Platform (PaaS)
+*“From Source Code to Production URL on Kubernetes — Zero Infrastructure Friction.”*  
+*Inspired by Render and Railway*
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
-[![Architecture: Kubernetes](https://img.shields.io/badge/Orchestration-Kubernetes-326CE5?style=flat-square&logo=kubernetes&logoColor=white)](https://kubernetes.io)
-[![Runtime: Docker](https://img.shields.io/badge/Containers-Docker-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docker.com)
-[![Status: In Development](https://img.shields.io/badge/Status-Active%20Development-success?style=flat-square)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-13%2F13%20Passing-brightgreen?style=for-the-badge&logo=pytest)](backend/tests/)
+[![Python](https://img.shields.io/badge/Python-3.12%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Docker](https://img.shields.io/badge/Containers-Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
+[![Kubernetes](https://img.shields.io/badge/Orchestration-Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](https://kubernetes.io)
 
 </div>
 
 ---
 
-## 📌 Overview
+## 📌 1. Overview & Motivation
 
-**DeployHub** is a self-service PaaS-style deployment platform designed to remove cloud infrastructure friction for developers.
+Turning raw application code into a secure, running cloud service is painful. Developers typically have to master:
+- Writing complex multi-stage Dockerfiles and container optimization.
+- Manually configuring container registries, authentication, and credentials.
+- Writing hundreds of lines of Kubernetes YAML manifests (`Deployment`, `Service`, `Ingress`, `Secret`, `ConfigMap`, `ResourceQuota`).
+- Configuring reverse proxies, domain routing, TLS certificates, and health probes.
+- Setting up CI/CD pipelines, zero-downtime rolling updates, and log aggregation.
 
-The core philosophy is simple:
-> **Developers should care about their application, not the infrastructure required to run it.**
+Commercial PaaS providers (Render, Railway, Heroku) solve this friction, but introduce **steep monthly bills, restrictive compute limits, and proprietary vendor lock-in**.
 
-A developer connects a GitHub repository, configures a few settings, clicks **Deploy**, and receives a live public URL. DeployHub handles everything in between: detecting the runtime, building a Docker image, pushing it to a registry, creating Kubernetes resources, running health checks, and streaming logs.
+### 💡 The Core Philosophy
+> **"Developers should care exclusively about their application code, not the underlying cloud infrastructure required to serve it."**
+
+**DeployHub** is a lightweight, open-source, self-hosted Cloud Control Plane that connects GitHub repositories directly to running workloads on Kubernetes. Simply connect a repository, pick a branch, and receive a live public HTTPS endpoint.
+
+---
+
+## ⚡ 2. Comparison: How DeployHub Compares
+
+| Feature | Raw Kubernetes | Commercial PaaS (Render / Railway) | DeployHub |
+| :--- | :---: | :---: | :---: |
+| **Developer Experience** | ❌ High cognitive load (YAML, networking) | ✅ Instant git-push deployments | ✅ Instant git-push deployments |
+| **Hosting Cost** | Low / Variable | ❌ Expensive monthly tier markups | ✅ Minimal (Self-hosted on any VM / K8s) |
+| **Vendor Lock-in** | None | ❌ High proprietary lock-in | ✅ Zero (Standard OCI & K8s primitives) |
+| **Infrastructure Control**| Full control | ❌ Black box | ✅ 100% Transparent & customizable |
+| **Multi-Tenancy** | Manual RBAC | Automated | ✅ Per-user namespace isolation |
+| **Automated Builds** | Manual CI/CD setup | Automated | ✅ Built-in runtime detection & builder |
+
+---
+
+## 🔄 3. End-to-End Deployment Lifecycle
+
+When a developer clicks **Deploy** (or pushes a commit to GitHub), DeployHub executes an automated multi-stage pipeline:
 
 ```mermaid
-flowchart LR
-    A[GitHub Repository] --> B[Detect Project Type]
-    B --> C[Build Docker Image]
-    C --> D[Push to Registry]
-    D --> E[Deploy to Kubernetes]
-    E --> F[Health Check]
-    F --> G[Public URL]
+sequenceDiagram
+    autonumber
+    actor Dev as 👨‍💻 Developer / GitHub
+    participant API as ⚡ FastAPI Control Plane
+    participant DB as 🗄️ PostgreSQL
+    participant Queue as 📨 Redis Queue
+    participant Worker as 🔨 Celery Worker
+    participant Reg as 📦 Container Registry (GHCR)
+    participant K8s as ☸️ Kubernetes Cluster
+    participant Ingress as 🌐 NGINX Ingress
+
+    Dev->>API: Git Push or POST /api/projects/{id}/deploy
+    API->>DB: Record Deployment (Status: QUEUED)
+    API->>Queue: Enqueue Build Job
+    API-->>Dev: HTTP 202 Accepted { deployment_id: "0250b6a3" }
+    
+    Worker->>Queue: Pop Job
+    Worker->>DB: Status: CLONING
+    Worker->>Worker: Git clone repository at commit SHA
+    
+    Worker->>DB: Status: BUILDING
+    Worker->>Worker: Detect Runtime (Python/Node/Docker) & Build Image
+    
+    Worker->>DB: Status: PUSHING
+    Worker->>Reg: Push image (deployhub/app:{sha})
+    
+    Worker->>DB: Status: DEPLOYING
+    Worker->>K8s: Apply Deployment, Service, Ingress manifests
+    
+    Worker->>DB: Status: HEALTH_CHECK
+    Worker->>K8s: Poll Pod readiness probe & HTTP /health
+    
+    K8s-->>Worker: Pods Ready & Passing Probes
+    Worker->>DB: Status: RUNNING (Assign Public URL)
+    Ingress-->>Dev: Traffic routed to live container!
 ```
 
-DeployHub is built as a Cloud/DevOps engineering portfolio project, but is designed to be usable by other developers.
-
-> **What DeployHub builds vs. reuses:** DeployHub does **not** implement its own container runtime, scheduler, Git, or monitoring system. It uses Docker, Kubernetes, GitHub, and Prometheus/Grafana. The project is the **orchestration and control layer** that connects them into one developer experience.
-
 ---
 
-## 🚀 Features
+## 🏛️ 4. System Architecture: Control Plane vs Data Plane
 
-- **GitHub Integration:** Deploy from a repository and branch; auto-deploy on `git push` via webhooks.
-- **Automated Containerization:** Detects Python, Node.js, or an existing Dockerfile and builds an image.
-- **Kubernetes Orchestration:** Generates Deployments, Services, and Ingress for each application.
-- **Deployment Lifecycle Tracking:** Every deployment moves through a clear state machine.
-- **Live Logs & Health Checks:** Streamed build/deploy logs and liveness/readiness probes.
-- **Rollbacks & Environment Variables:** Redeploy a previous image; manage secrets securely.
-- **Monitoring & Autoscaling:** Prometheus/Grafana metrics and Horizontal Pod Autoscaling.
-
-> Features marked 📅 in the [Project Status](#-project-status) table are planned, not yet implemented.
-
----
-
-## 🏗️ System Architecture
+DeployHub cleanly isolates the orchestration plane (**Control Plane**) from application customer workloads (**Data Plane**):
 
 ```mermaid
 flowchart TD
-    Dev([Developer]) --> UI[React Dashboard]
-    UI --> API[FastAPI Control API]
+    subgraph CP["🧠 DEPLOYHUB CONTROL PLANE"]
+        UI["🖥️ React Dashboard<br/>(TypeScript + Vite + Tailwind)"]
+        API["⚡ FastAPI REST Engine<br/>(Async + OpenAPI + SSE)"]
+        DB[("🗄️ PostgreSQL<br/>(Users, Projects, Deployments)")]
+        REDIS[("📨 Redis<br/>(Task Queue + Pub/Sub Logs)")]
+        WORKER["🔨 Celery Worker Engine<br/>(Orchestrator & Builders)"]
 
-    subgraph CP["Control Plane"]
-        API --> DB[(PostgreSQL)]
-        API --> Q[(Redis Queue)]
-        Q --> W[Celery Workers]
+        UI <-->|REST API + SSE Logs| API
+        API <--> DB
+        API <--> REDIS
+        REDIS <--> WORKER
+        WORKER <--> DB
     end
 
-    API <--> GH[GitHub API and Webhooks]
-    W --> BUILD[Docker Build]
-    BUILD --> REG[Container Registry - GHCR]
-    W --> K8S[Kubernetes API]
-    REG --> K8S
-
-    subgraph CL["Kubernetes Cluster"]
-        K8S --> PODS[Application Pods]
-        ING[Ingress] --> SVC[Service] --> PODS
-        PODS -. metrics .-> PROM[Prometheus]
-        PROM --> GRAF[Grafana]
+    subgraph EXT["🔌 EXTERNAL SERVICES"]
+        GH["🐙 GitHub API & Webhooks"]
+        REG["📦 GHCR / OCI Registry"]
     end
 
-    Visitor([End User]) --> ING
+    subgraph DP["☸️ KUBERNETES DATA PLANE (Cluster)"]
+        K8S_API["☸️ K8s API Server"]
+        ING["🌐 NGINX Ingress Controller<br/>(*.deployhub.live)"]
+        
+        subgraph NS["App Namespace: app-weather-api"]
+            SVC["ClusterIP Service"]
+            POD1["Pod Replica 1"]
+            POD2["Pod Replica 2"]
+        end
+        
+        PROM["📊 Prometheus & Grafana"]
+    end
+
+    API <-->|OAuth & Webhook Events| GH
+    WORKER -->|Push Images| REG
+    WORKER -->|Apply Manifests via client-py| K8S_API
+    REG -->|Pull Images| NS
+    ING --> SVC
+    SVC --> POD1 & POD2
+    POD1 & POD2 -. Metrics .-> PROM
 ```
-
-For a component-by-component explanation, see [docs/architecture.md](docs/architecture.md).
 
 ---
 
-## ⚙️ Deployment Lifecycle
+## 🎛️ 5. Deployment State Machine
 
-Every deployment moves through explicit states, which makes failures easy to locate and debug.
+Deployments adhere to a strictly deterministic state machine with full failure auditability:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> QUEUED
-    QUEUED --> CLONING
-    CLONING --> BUILDING
-    BUILDING --> PUSHING
-    PUSHING --> DEPLOYING
-    DEPLOYING --> HEALTH_CHECK
-    HEALTH_CHECK --> RUNNING
-    CLONING --> FAILED
-    BUILDING --> FAILED
-    PUSHING --> FAILED
-    DEPLOYING --> FAILED
-    HEALTH_CHECK --> FAILED
-    RUNNING --> STOPPED
+    [*] --> QUEUED: User clicks Deploy / Webhook triggers
+    QUEUED --> CLONING: Worker claims job
+    CLONING --> BUILDING: Git repo cloned at commit SHA
+    BUILDING --> PUSHING: Image built with immutable SHA tag
+    PUSHING --> DEPLOYING: Image pushed to OCI Registry
+    DEPLOYING --> HEALTH_CHECK: Manifests applied to cluster
+    HEALTH_CHECK --> RUNNING: HTTP 200 health probe passed
+
+    CLONING --> FAILED: Invalid repository / Git auth error
+    BUILDING --> FAILED: Compiler error / Dockerfile failure
+    PUSHING --> FAILED: Registry timeout / Auth failure
+    DEPLOYING --> FAILED: ImagePullBackOff / K8s schema error
+    HEALTH_CHECK --> FAILED: CrashLoopBackOff / Health check timeout
+
+    RUNNING --> STOPPED: User manually shuts down
+    RUNNING --> DEPLOYING: New commit triggers rolling update
 ```
 
 ---
 
-## 🧰 Tech Stack
+## 📊 6. Project Status & Roadmap
 
-| Layer | Technology |
-| :--- | :--- |
-| **Frontend** | React, TypeScript, Vite, Tailwind CSS |
-| **Backend** | Python, FastAPI, SQLAlchemy |
-| **Database** | PostgreSQL |
-| **Queue / Workers** | Redis + Celery |
-| **Authentication** | GitHub OAuth |
-| **Containers** | Docker, Docker Compose |
-| **Registry** | GitHub Container Registry (GHCR) |
-| **Orchestration** | Kubernetes (Kind for local development), Helm |
-| **Routing** | Kubernetes Ingress with wildcard subdomains |
-| **CI/CD** | GitHub Actions |
-| **Monitoring** | Prometheus, Grafana, Loki |
-| **Security** | Trivy, NetworkPolicies, ResourceQuotas |
-| **Infrastructure as Code** | Terraform |
-| **Cloud** | AWS (EC2 / EKS, VPC, IAM) |
+| Phase | Milestone | Focus Areas | Status |
+| :---: | :--- | :--- | :---: |
+| **01** | **Local Deployment Engine** | Git cloner, runtime auto-detection, Docker builder, isolated runner, health checks, CLI | <div align="center">✅ **Completed**</div> |
+| **02** | **Docker Pipeline & Registry** | Secure Dockerfile generation, non-root UID 10001, SHA tagging, GHCR registry push | <div align="center">🟡 **In Progress**</div> |
+| **03** | **Kubernetes Integration** | Dynamic manifests (Deployment, Service, Ingress), Kind/k3s cluster driver, namespace isolation | <div align="center">⏳ **Next Up**</div> |
+| **04** | **API & Web Dashboard** | FastAPI REST endpoints, PostgreSQL (SQLAlchemy), Celery + Redis, React UI, SSE log streaming | <div align="center">⏳ **Next Up**</div> |
+| **05** | **GitHub Integration** | GitHub OAuth 2.0 ("Login with GitHub"), repo selector, HMAC webhook receiver | <div align="center">📅 **Planned**</div> |
+| **06** | **CI/CD Pipeline** | GitHub Actions workflows, image publishing with SHA tags, automated Trivy scanning | <div align="center">📅 **Planned**</div> |
+| **07** | **Observability** | Prometheus metric scraping, Grafana dashboards for CPU/RAM/requests, platform health telemetry | <div align="center">📅 **Planned**</div> |
+| **08** | **Autoscaling & Hardening** | Horizontal Pod Autoscaler (HPA), instant rollback engine, NetworkPolicies, ResourceQuotas | <div align="center">📅 **Planned**</div> |
+| **09** | **Cloud Infrastructure** | Terraform IaC modules (AWS VPC, Subnets, EKS/EC2), production Helm chart | <div align="center">📅 **Planned**</div> |
 
 ---
 
-## 📋 Implementation Roadmap
+## 👥 7. Team Work Division: 2-Person Parallel Execution Plan
 
-Each phase produces a working system. The platform is built in stages, smallest working version first.
+To execute the remaining phases efficiently with **zero Git merge conflicts** and complete decoupling, the architecture is split into two specialized tracks with a strict code boundary.
 
-| Phase | Milestone | Focus Areas |
-| :---: | :--- | :--- |
-| **01** | **Local Deployment Engine** | Git clone, project detection, `docker build` and `docker run` |
-| **02** | **Docker Pipeline** | Dockerfile generation, health checks, deployment state machine |
-| **03** | **Kubernetes Integration** | Deployment, Service, Ingress, per-user namespaces |
-| **04** | **API & Web Dashboard** | FastAPI, PostgreSQL, React UI, live log streaming (SSE/WebSockets) |
-| **05** | **GitHub Integration** | OAuth login, repository selection, webhooks, auto-deploy |
-| **06** | **CI/CD** | GitHub Actions, registry pushes, commit-SHA image tags, Trivy scans |
-| **07** | **Observability** | Prometheus, Grafana, health alerts, platform metrics |
-| **08** | **Autoscaling & Hardening** | HPA, rollback, secrets, resource limits, rate limiting |
-| **09** | **Cloud Infrastructure** | Terraform, AWS (EC2/EKS), production deployment |
+```mermaid
+flowchart TD
+    subgraph ENG1["👤 PERSON A: Infrastructure & Data Plane Engineer"]
+        K8S["☸️ Kubernetes Driver<br/>backend/app/services/kubernetes.py"]
+        REG["📦 Registry Service<br/>backend/app/services/registry.py"]
+        INFRA["🏗️ Infrastructure & Helm<br/>infrastructure/ & helm/"]
+        OBS["📊 Observability (Prometheus/Grafana)<br/>infrastructure/monitoring/"]
+        SEC["🛡️ Hardening & CI/CD<br/>.github/workflows/ & Trivy"]
+    end
+
+    subgraph ENG2["👤 PERSON B: Control Plane API & Frontend Engineer"]
+        API["⚡ FastAPI REST Endpoints<br/>backend/app/api/"]
+        DB["🗄️ Database & Models<br/>backend/app/models/ & db/"]
+        WORKER["🔨 Celery Async Worker<br/>backend/app/workers/"]
+        SSE["📡 SSE Live Log Streaming<br/>backend/app/api/logs.py"]
+        UI["🖥️ React Dashboard UI<br/>frontend/"]
+        GH["🐙 GitHub OAuth & Webhooks<br/>backend/app/services/github.py"]
+    end
+
+    CONTRACT["🤝 The Clean Interface Contract<br/>backend/app/services/kubernetes.py<br/>(Person B calls Person A's class method — 0 conflict)"]
+
+    ENG1 -. Implements .-> CONTRACT
+    ENG2 -. Calls .-> CONTRACT
+```
+
+### 👤 Person A — Platform & Infrastructure Engineer (Data Plane & DevOps)
+> **Domain:** Everything between the Docker image and running production workloads on Kubernetes.
+* **Owned Directories:**
+  * `backend/app/services/kubernetes.py` (Kubernetes client & manifest manager)
+  * `backend/app/services/registry.py` (Container registry push service)
+  * `infrastructure/` (Kind cluster configs, NGINX Ingress, Prometheus, Terraform)
+  * `helm/` (Helm charts for DeployHub)
+  * `.github/workflows/` (GitHub Actions CI/CD)
+* **Concrete Deliverables:**
+  1. **Phase 02 (Registry)**: Complete `registry.py` to push images to GHCR using SHA tags.
+  2. **Phase 03 (Kubernetes Engine)**: Build `kubernetes.py` generating dynamic `Deployment`, `Service`, `Ingress`, and `Secret` manifests, plus Kind local cluster setup.
+  3. **Phase 06 (CI/CD)**: Write GitHub Actions PR check workflows and Trivy security scans.
+  4. **Phase 07 (Observability)**: Create Prometheus scrapers and Grafana dashboards.
+  5. **Phase 08 & 09 (Hardening & Cloud)**: Add HPA autoscaling, NetworkPolicies, and Terraform AWS modules.
 
 ---
 
-## 📊 Project Status
-
-| Feature | Status |
-| :--- | :---: |
-| Clone repo + Docker build + run container | ✅ Done (Phase 01) |
-| Runtime Auto-Detection (Python, Node.js, Dockerfile) | ✅ Done (Phase 01) |
-| Deterministic Deployment State Machine | ✅ Done (Phase 01) |
-| HTTP Health Checks & Crash Diagnostics | ✅ Done (Phase 01) |
-| Sample Test Applications (`examples/`) | ✅ Done (Phase 01) |
-| Automated Test Suite (pytest unit & e2e) | ✅ Done (Phase 01) |
-| FastAPI backend + PostgreSQL | 📅 Planned (Phase 04) |
-| Web dashboard (React + Tailwind) | 📅 Planned (Phase 04) |
-| Kubernetes deployment (Deployment, Service, Ingress) | 🚧 In progress (Phase 03) |
-| GitHub OAuth + webhooks | 📅 Planned (Phase 05) |
-| CI/CD pipeline (GitHub Actions) | 📅 Planned (Phase 06) |
-| Prometheus / Grafana monitoring | 📅 Planned (Phase 07) |
-| Autoscaling (HPA) | 📅 Planned (Phase 08) |
-| Terraform + AWS | 📅 Planned (Phase 09) |
-
-✅ Done  ·  🚧 In progress  ·  📅 Planned
+### 👤 Person B — Control Plane & Full-Stack Engineer (API & UI)
+> **Domain:** Everything the developer interacts with: REST API, database, async queues, logs, and frontend.
+* **Owned Directories:**
+  * `frontend/` (React + TypeScript + Tailwind SPA)
+  * `backend/app/api/` (FastAPI routes: projects, deployments, logs, auth, webhooks)
+  * `backend/app/models/` & `backend/app/schemas/` (SQLAlchemy & Pydantic models)
+  * `backend/app/db/` (PostgreSQL session and migrations)
+  * `backend/app/workers/` (Celery background build/deploy tasks)
+  * `backend/app/services/github.py` (GitHub OAuth & Webhooks)
+* **Concrete Deliverables:**
+  1. **Phase 04 (API & DB)**: PostgreSQL models (`User`, `Project`, `Deployment`, `EnvVar`) and FastAPI endpoints.
+  2. **Phase 04 (Async Workers & SSE)**: Celery task queue executing the orchestrator in the background and streaming live logs to frontend via Server-Sent Events (SSE).
+  3. **Phase 04 (Dashboard UI)**: React dashboard with project creation, status badge, and terminal-style log viewer.
+  4. **Phase 05 (GitHub Integration)**: GitHub OAuth login flow and webhook receiver for auto-deployments on `git push`.
 
 ---
 
-## 🗂️ Repository Structure
+### 🤝 The Zero-Conflict Integration Boundary
+Person A and Person B can work completely in parallel without blocking each other:
+1. **Directory Isolation**: Person A and Person B never edit the same files.
+2. **Interface Contract**: Person A exposes a single well-typed class in `backend/app/services/kubernetes.py`:
+   ```python
+   class KubernetesService:
+       def deploy_app(self, deployment_id: str, app_name: str, image: str, port: int, env: dict) -> K8sResult: ...
+       def get_logs(self, app_name: str) -> str: ...
+       def delete_app(self, app_name: str) -> bool: ...
+   ```
+3. **Mocking**: While Person A builds the Kubernetes driver, Person B uses the existing local container runner or a mock. Integrating the real Kubernetes service requires **exactly 1 line of code change in Person B's worker**!
+
+---
+
+## 🗂️ 8. Repository Structure
 
 ```text
-deployhub/
+DeployHub/
 ├── backend/
 │   ├── app/
-│   │   ├── config.py          # App settings and environment defaults
-│   │   └── engine/            # Phase 01 Core Deployment Engine
-│   │       ├── models.py      # State machine models & schemas
-│   │       ├── cloner.py      # Git cloning and commit-SHA extraction
-│   │       ├── detector.py    # Runtime auto-detection
-│   │       ├── templates.py   # Secure non-root Dockerfile generators
-│   │       ├── builder.py     # Docker build with streaming logs
-│   │       ├── runner.py      # Isolated container execution with resource limits
-│   │       ├── health.py      # HTTP polling health checker with crash detection
-│   │       ├── orchestrator.py# State machine lifecycle coordinator
-│   │       └── cli.py         # Interactive CLI runner
-│   ├── tests/                 # Unit and end-to-end integration tests
+│   │   ├── config.py              # Application settings and environment defaults
+│   │   ├── engine/                # Core Deployment Engine (Phase 01)
+│   │   │   ├── models.py          # State machine models & schemas
+│   │   │   ├── cloner.py          # Git cloner with commit-SHA extraction
+│   │   │   ├── detector.py        # Runtime auto-detection (Python, Node, Docker)
+│   │   │   ├── templates.py       # Secure non-root Dockerfile generators
+│   │   │   ├── builder.py         # Docker image builder with log streaming
+│   │   │   ├── runner.py          # Container runner with cpus/memory/pid limits
+│   │   │   ├── health.py          # HTTP health checker with crash diagnostics
+│   │   │   ├── orchestrator.py    # State machine lifecycle coordinator
+│   │   │   └── cli.py             # Interactive CLI runner
+│   │   ├── api/                   # [Person B] FastAPI REST endpoints
+│   │   ├── db/                    # [Person B] PostgreSQL engine & sessions
+│   │   ├── models/                # [Person B] SQLAlchemy database entities
+│   │   ├── schemas/               # [Person B] Pydantic request/response schemas
+│   │   ├── workers/               # [Person B] Celery async queue workers
+│   │   └── services/
+│   │       ├── kubernetes.py      # [Person A] Kubernetes client driver
+│   │       ├── registry.py        # [Person A] GHCR / OCI registry service
+│   │       └── github.py          # [Person B] GitHub OAuth & webhooks
+│   ├── tests/                     # Unit and end-to-end integration tests
 │   └── requirements.txt
-├── examples/                  # Sample applications for deployment testing
-│   ├── python-app/            # Python / requirements.txt sample
-│   ├── node-app/              # Node.js / package.json sample
-│   └── dockerfile-app/        # Custom Dockerfile sample
-├── docs/                      # Technical blueprints and specifications
-├── Makefile                   # Convenient CLI targets (test, demo, clean)
-├── .env.example               # Environment variables template
+├── frontend/                      # [Person B] React + Vite + Tailwind dashboard
+├── infrastructure/                # [Person A] Kind, K8s manifests, Terraform
+├── helm/                          # [Person A] Helm chart for DeployHub
+├── examples/                      # Test applications for deployment verification
+│   ├── python-app/                # Python / requirements.txt sample
+│   ├── node-app/                  # Node.js / package.json sample
+│   └── dockerfile-app/            # Custom Dockerfile sample
+├── docs/                          # Blueprints, architecture, and specifications
+├── Makefile                       # Developer shortcuts (test, demo, clean)
+├── .env.example                   # Environment configuration template
 ├── .gitignore
 ├── README.md
 └── LICENSE
@@ -204,9 +305,9 @@ deployhub/
 
 ---
 
-## 🚀 Quickstart & Demo (Phase 01)
+## 🚀 9. Quickstart & Testing (Phase 01)
 
-You can run DeployHub's core deployment engine and test applications immediately:
+You can run DeployHub's core deployment engine and verify sample applications right now:
 
 ### 1. Setup Environment
 ```bash
@@ -218,44 +319,66 @@ cd DeployHub
 make venv
 ```
 
-### 2. Run Tests
+### 2. Run Test Suite (13/13 Passing)
 ```bash
-# Run full unit and end-to-end integration test suite
+# Run unit & end-to-end integration tests
 make test
 ```
 
 ### 3. Deploy Sample Applications via CLI
 ```bash
-# Deploy Python sample app
+# 1. Deploy Python application (auto-generates Python 3.12 Dockerfile)
 make demo-python
 
-# Deploy Node.js sample app
+# 2. Deploy Node.js application (auto-generates Node 22 Dockerfile)
 make demo-node
 
-# Deploy Custom Dockerfile sample app
+# 3. Deploy custom Dockerfile application
 make demo-docker
 
-# Clean up running test containers
+# 4. Clean up any test containers
 make clean
+```
+
+Sample CLI output:
+```text
+🚀 Initiating deployment for: ./examples/python-app (branch: main)
+
+[01:04:58] [QUEUED] Deployment 0250b6a3 queued for python-demo
+[01:04:58] [CLONING] Fetching repository: ./examples/python-app (branch: main)
+[01:04:58] [CLONING] Prepared local repository from examples/python-app at SHA 41412bc
+[01:04:58] [BUILDING] Inspecting repository and detecting application runtime...
+[01:04:58] [BUILDING] Detected runtime: python via 'requirements.txt' (Port: 8000)
+[01:04:58] [BUILDING] Building Docker image: deployhub/python-demo:41412bc
+[01:04:59] [BUILDING] Successfully built image: deployhub/python-demo:41412bc
+[01:04:59] [DEPLOYING] Starting container 'dh-python-demo-0250b6a3' (Port mapping: 32000->8000)...
+[01:04:59] [DEPLOYING] Container started: cc85a8a3aedd
+[01:04:59] [HEALTH_CHECK] Awaiting health check on http://127.0.0.1:32000/health...
+[01:05:00] [HEALTH_CHECK] Health check passed successfully!
+[01:05:00] [RUNNING] Deployment completed successfully. Live URL: http://127.0.0.1:32000
 ```
 
 ---
 
-## 🔒 Security
+## 🔒 10. Security Architecture
 
-DeployHub runs code supplied by users, so security is a core design concern: non-root containers, no privileged mode, no Docker socket exposure, CPU/memory limits, per-user namespaces, image scanning with Trivy, signed webhook verification, and rate limiting. See the security section of [docs/architecture.md](docs/architecture.md#9-security-considerations).
-
----
-
-## 📚 Documentation
-
-- [Architecture](docs/architecture.md)
-- [DeployHub Development Specification](./DeployHub_Development_Specification.md)
-
-More documents (API reference, database, deployment lifecycle) will be added as each phase is built.
+DeployHub runs untrusted user code, so security is enforced by default from the ground up:
+* **Non-Root Execution**: Auto-generated images mandate numeric UID `10001` (`USER 10001`), complying with Kubernetes `runAsNonRoot` requirements.
+* **Privilege Restriction**: Containers run strictly with `--security-opt no-new-privileges` and without `--privileged`.
+* **Resource Quotas**: Hard CPU (`0.5`), memory (`512MB`), and process PID (`256`) ceilings prevent denial of service and runaway workloads.
+* **Credential Isolation**: `.dockerignore` shielding prevents `.git`, `.env`, keys, and sensitive tokens from ever baking into images.
+* **Network Isolation**: Applications run inside dedicated Kubernetes namespaces with strict NetworkPolicies.
 
 ---
 
-## 📄 License
+## 📚 11. Documentation
+
+- [Platform Architecture & Blueprint](./DeployHub_Notion_Project_Proposal.md)
+- [Complete Development Specification](./DeployHub_Development_Specification.md)
+- [Architecture Deep Dive](docs/architecture.md)
+
+---
+
+## 📄 12. License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
