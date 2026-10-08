@@ -30,4 +30,4 @@ jobs:
         env:
           PYTHONPATH: backend
         run: |
-          pytest -v backend/tests/test_detector.py backend/tests/test_templates.py backend/tests/test_registry.py backend/tests/test_kubernetes.py
+          pytest -v backend/tests/test_detector.py backend/tests/test_templates.py backend/tests/test_registry.py backend/tests/test_kubernetes.py backend/tests/test_api_health.py

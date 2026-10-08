@@ -8,7 +8,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -27,6 +26,12 @@ jobs:
         id: vars
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
+      - name: Lowercase Repository Name
+        id: repo_name
+        run: echo "lowercase=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -40,17 +45,17 @@ jobs:
       - name: Build Container Image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./backend
           file: ./backend/Dockerfile
           load: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.sha_short }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.repo_name.outputs.lowercase }}:${{ steps.vars.outputs.sha_short }}
+            ${{ env.REGISTRY }}/${{ steps.repo_name.outputs.lowercase }}:latest
 
       - name: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.29.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.sha_short }}
+          image-ref: ${{ env.REGISTRY }}/${{ steps.repo_name.outputs.lowercase }}:${{ steps.vars.outputs.sha_short }}
           format: "table"
           exit-code: "0"
           ignore-unfixed: true
@@ -59,5 +64,5 @@ jobs:
 
       - name: Push Image to GHCR
         run: |
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.sha_short }}
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ steps.repo_name.outputs.lowercase }}:${{ steps.vars.outputs.sha_short }}
+          docker push ${{ env.REGISTRY }}/${{ steps.repo_name.outputs.lowercase }}:latest
